@@ -291,7 +291,8 @@ class TestWriter:
                     output_cols = [f.name for f in result.schema.fields]
 
                     for name, dtype, nullable in expected_fields:
-                        assert name in output_cols, f"Missing field: {{name}}"{added_check}
+                        assert name in output_cols, f"Missing field: {{name}}"
+{added_check}
 
                 def test_schema_matches_snapshot(
                     self, spark: SparkSession, expected_output_df: DataFrame, input_df: DataFrame
