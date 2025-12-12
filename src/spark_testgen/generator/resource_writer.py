@@ -79,6 +79,11 @@ class ResourceWriter:
     def _write_dataframe(self, df: DataFrame, path: Path) -> None:
         """Write DataFrame to parquet.
 
+        Supports multiple execution environments:
+        - Classic PySpark with local filesystem access
+        - Spark Connect (may require pandas fallback)
+        - Serverless Spark (PERSIST TABLE not supported, uses pandas)
+
         Args:
             df: DataFrame to write
             path: Target path
@@ -91,12 +96,72 @@ class ResourceWriter:
 
             shutil.rmtree(path_str)
 
-        # Coalesce to single file for simplicity
-        df.coalesce(1).write.mode("overwrite" if self.overwrite else "error").parquet(
-            path_str
-        )
+        # Try native Spark write first
+        try:
+            # Coalesce to single file for simplicity
+            df.coalesce(1).write.mode(
+                "overwrite" if self.overwrite else "error"
+            ).parquet(path_str)
+            logger.debug(f"Wrote DataFrame to {path_str} (native Spark)")
+            return
+        except BaseException as e:
+            # Check for serverless/Connect errors
+            error_msg = str(e).lower()
+            is_serverless_error = any(
+                pattern in error_msg
+                for pattern in [
+                    "persist",
+                    "not supported",
+                    "serverless",
+                    "write not supported",
+                    "connect",
+                ]
+            )
 
-        logger.debug(f"Wrote DataFrame to {path_str}")
+            if not is_serverless_error:
+                # Re-raise if it's not a known serverless restriction
+                raise
+
+            logger.debug(
+                f"Native Spark write not available, falling back to pandas: {e}"
+            )
+
+        # Fallback: Use pandas for serverless/Connect environments
+        self._write_dataframe_via_pandas(df, path)
+
+    def _write_dataframe_via_pandas(self, df: DataFrame, path: Path) -> None:
+        """Write DataFrame to parquet using pandas as a fallback.
+
+        This is used when native Spark write is not available (e.g., serverless).
+        Note: This collects data to the driver, so it's only suitable for
+        test data which should be small.
+
+        Args:
+            df: DataFrame to write
+            path: Target path
+        """
+        try:
+            # Collect to pandas
+            pdf = df.toPandas()
+
+            # Ensure directory exists
+            path.mkdir(parents=True, exist_ok=True)
+
+            # Write as parquet
+            parquet_file = path / "part-00000.parquet"
+            pdf.to_parquet(parquet_file, index=False, engine="pyarrow")
+
+            logger.debug(f"Wrote DataFrame to {path} (via pandas)")
+        except ImportError as e:
+            raise RuntimeError(
+                "pandas or pyarrow is required for writing DataFrames in "
+                "serverless/Connect environments. Install with: "
+                "pip install pandas pyarrow"
+            ) from e
+        except BaseException as e:
+            raise RuntimeError(
+                f"Failed to write DataFrame via pandas fallback: {e}"
+            ) from e
 
     def _write_text(self, content: str, path: Path) -> None:
         """Write text content to file.

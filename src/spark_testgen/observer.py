@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
     from pyspark.sql.types import StructType
 
+from .inference.plan_extractor import PlanExtractor
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +70,7 @@ class Observer:
         """
         self.sample_size = sample_size
         self.seed = seed
+        self._plan_extractor = PlanExtractor()
 
     def capture(
         self,
@@ -141,21 +144,26 @@ class Observer:
     def _extract_logical_plan(self, df: DataFrame) -> str:
         """Extract logical execution plan from DataFrame.
 
+        Uses PlanExtractor for robust cross-environment support,
+        including Spark Connect and serverless Spark.
+
         Args:
             df: DataFrame to extract plan from
 
         Returns:
             String representation of logical plan
         """
-        try:
-            # Access the internal Java DataFrame
-            return df._jdf.queryExecution().logical().toString()
-        except Exception as e:
-            logger.warning(f"Failed to extract logical plan: {e}")
-            return f"<unable to extract logical plan: {e}>"
+        result = self._plan_extractor.get_logical_plan(df)
+        if result.success:
+            return result.plan
+        logger.warning(f"Failed to extract logical plan: {result.error}")
+        return f"<unable to extract logical plan: {result.error}>"
 
     def _extract_physical_plan(self, df: DataFrame) -> str:
         """Extract physical execution plan from DataFrame.
+
+        Uses PlanExtractor for robust cross-environment support,
+        including Spark Connect and serverless Spark.
 
         Args:
             df: DataFrame to extract plan from
@@ -163,9 +171,8 @@ class Observer:
         Returns:
             String representation of physical plan
         """
-        try:
-            # Access the internal Java DataFrame
-            return df._jdf.queryExecution().executedPlan().toString()
-        except Exception as e:
-            logger.warning(f"Failed to extract physical plan: {e}")
-            return f"<unable to extract physical plan: {e}>"
+        result = self._plan_extractor.get_physical_plan(df)
+        if result.success:
+            return result.plan
+        logger.warning(f"Failed to extract physical plan: {result.error}")
+        return f"<unable to extract physical plan: {result.error}>"

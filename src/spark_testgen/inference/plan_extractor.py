@@ -245,7 +245,8 @@ class PlanExtractor:
                 method=ExtractionMethod.JVM_QUERY_EXECUTION,
                 success=True,
             )
-        except Exception as e:
+        except BaseException as e:
+            # Catch ALL exceptions including Spark Connect errors
             return PlanResult.unavailable(f"JVM logical plan extraction failed: {e}")
 
     def _try_jvm_physical_plan(self, df: DataFrame) -> PlanResult:
@@ -272,7 +273,8 @@ class PlanExtractor:
                 method=ExtractionMethod.JVM_QUERY_EXECUTION,
                 success=True,
             )
-        except Exception as e:
+        except BaseException as e:
+            # Catch ALL exceptions including Spark Connect errors
             return PlanResult.unavailable(f"JVM physical plan extraction failed: {e}")
 
     def _try_explain_string(self, df: DataFrame, mode: str = "simple") -> PlanResult:
@@ -373,22 +375,34 @@ class PlanExtractor:
         Uses capability detection rather than environment heuristics.
         Results are cached per DataFrame type for efficiency.
 
+        IMPORTANT: Spark Connect DataFrames have a _jdf attribute that exists
+        (hasattr returns True) but accessing it raises an exception. We must
+        actually try to access and use the attribute to detect this.
+
         Args:
             df: PySpark DataFrame
 
         Returns:
             True if JVM access is available, False otherwise
         """
+        # Use cached result if available for performance
+        if self._jvm_available is not None:
+            return self._jvm_available
+
         # Check if _jdf attribute exists
         if not hasattr(df, "_jdf"):
+            self._jvm_available = False
             return False
 
         try:
-            # Try to access _jdf
+            # Try to access _jdf - this will raise on Spark Connect!
+            # hasattr(df, "_jdf") returns True on Spark Connect, but
+            # actually accessing df._jdf raises an exception.
             jdf = df._jdf
 
-            # Check if it's None (can happen with Spark Connect)
+            # Check if it's None (can happen with some clients)
             if jdf is None:
+                self._jvm_available = False
                 return False
 
             # Try to access queryExecution - this will fail for Connect clients
@@ -397,10 +411,17 @@ class PlanExtractor:
             # Verify we can call a method on it
             _ = query_execution.logical()
 
+            self._jvm_available = True
             return True
 
-        except (AttributeError, TypeError, Exception):
-            # Any error means JVM access is not available
+        except BaseException:
+            # Catch ALL exceptions including:
+            # - pyspark.errors.PySparkAttributeError (JVM_ATTRIBUTE_NOT_SUPPORTED)
+            # - py4j.protocol.Py4JError
+            # - AttributeError, TypeError
+            # - Any other exception from Spark Connect or remote clients
+            # Using BaseException to ensure we catch everything
+            self._jvm_available = False
             return False
 
     def _extract_physical_section(self, extended_plan: str) -> str:
