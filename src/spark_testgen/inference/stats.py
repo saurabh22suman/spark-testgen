@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
     from pyspark.sql.types import StructType
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -67,6 +70,32 @@ class StatsAnalyzer:
         """
         self.compute_distinct = compute_distinct
 
+    def _safe_cache(self, df: DataFrame) -> DataFrame:
+        """Safely cache a DataFrame, handling serverless environments.
+
+        On serverless Spark (e.g., Databricks), cache/persist operations
+        are not supported. This method attempts to cache but gracefully
+        handles the case where it's not available.
+
+        Args:
+            df: DataFrame to cache
+
+        Returns:
+            The DataFrame (cached if possible, original otherwise)
+        """
+        try:
+            df.cache()
+            return df
+        except BaseException as e:
+            error_msg = str(e).lower()
+            if any(
+                pattern in error_msg
+                for pattern in ["persist", "not supported", "serverless", "cache"]
+            ):
+                logger.debug(f"Cache not available (serverless mode): {e}")
+                return df
+            raise
+
     def analyze(self, df: DataFrame) -> DataFrameStats:
         """Analyze a DataFrame and compute statistics.
 
@@ -76,8 +105,8 @@ class StatsAnalyzer:
         Returns:
             DataFrameStats with computed statistics
         """
-        # Cache for multiple passes
-        df.cache()
+        # Try to cache for multiple passes (skip on serverless)
+        df = self._safe_cache(df)
 
         row_count = df.count()
 

@@ -119,11 +119,37 @@ class Observer:
             physical_plan=physical_plan,
         )
 
+    def _safe_cache(self, df: DataFrame) -> DataFrame:
+        """Safely cache a DataFrame, handling serverless environments.
+
+        On serverless Spark (e.g., Databricks), cache/persist operations
+        are not supported. This method attempts to cache but gracefully
+        handles the case where it's not available.
+
+        Args:
+            df: DataFrame to cache
+
+        Returns:
+            The DataFrame (cached if possible, original otherwise)
+        """
+        try:
+            df.cache()
+            return df
+        except BaseException as e:
+            error_msg = str(e).lower()
+            if any(
+                pattern in error_msg
+                for pattern in ["persist", "not supported", "serverless", "cache"]
+            ):
+                logger.debug(f"Cache not available (serverless mode): {e}")
+                return df
+            raise
+
     def _sample_dataframe(self, df: DataFrame) -> DataFrame:
         """Sample rows from DataFrame for snapshot testing.
 
         Uses limit() for small datasets, sample() for large ones.
-        The result is cached to avoid recomputation.
+        The result is cached to avoid recomputation (if caching is available).
 
         Args:
             df: DataFrame to sample
@@ -136,10 +162,8 @@ class Observer:
         # as we're testing schema and basic transformations
         sampled = df.limit(self.sample_size)
 
-        # Cache to avoid recomputation when saving
-        sampled.cache()
-
-        return sampled
+        # Cache to avoid recomputation when saving (skip on serverless)
+        return self._safe_cache(sampled)
 
     def _extract_logical_plan(self, df: DataFrame) -> str:
         """Extract logical execution plan from DataFrame.
