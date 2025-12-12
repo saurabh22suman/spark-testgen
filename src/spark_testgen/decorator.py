@@ -72,6 +72,8 @@ def autogen_tests(func: F) -> F:
 
     @functools.wraps(func)
     def wrapper(*args: object, **kwargs: object) -> DataFrame:
+        print(f"[spark-testgen] Decorator wrapper called for {func.__name__}")
+        
         # Get the input DataFrame (first positional argument)
         if not args:
             raise ValueError(
@@ -80,23 +82,31 @@ def autogen_tests(func: F) -> F:
             )
 
         input_df = args[0]
+        print(f"[spark-testgen] Input DataFrame type: {type(input_df).__module__}.{type(input_df).__name__}")
 
         # Check if test generation is enabled
         if not Config.is_enabled():
+            print("[spark-testgen] SPARK_TESTGEN not enabled, passing through")
             # Normal execution - no test generation
             return func(*args, **kwargs)
 
+        print("[spark-testgen] SPARK_TESTGEN enabled, generating tests...")
         logger.info(f"spark-testgen: Generating tests for {func.__name__}")
 
         # Execute the transformation
+        print("[spark-testgen] Executing user function...")
         output_df = func(*args, **kwargs)
+        print(f"[spark-testgen] User function complete, output type: {type(output_df).__module__}.{type(output_df).__name__}")
 
         # Capture observation
+        print("[spark-testgen] Starting observation capture...")
         config = get_config()
         observer = Observer(sample_size=config.sample_size, seed=config.seed)
         observation = observer.capture(input_df, output_df, func.__name__)
+        print("[spark-testgen] Observation capture complete")
 
         # Run the generation pipeline
+        print("[spark-testgen] Running generation pipeline...")
         _run_pipeline(observation, config)
 
         logger.info(f"spark-testgen: Tests generated for {func.__name__}")
