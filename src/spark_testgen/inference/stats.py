@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
     from pyspark.sql.types import StructType
 
+from ..utils import is_serverless_environment
+
 logger = logging.getLogger(__name__)
 
 
@@ -74,8 +76,8 @@ class StatsAnalyzer:
         """Safely cache a DataFrame, handling serverless environments.
 
         On serverless Spark (e.g., Databricks), cache/persist operations
-        are not supported. This method attempts to cache but gracefully
-        handles the case where it's not available.
+        are not supported. This method detects the environment upfront
+        and skips caching entirely to avoid deferred execution errors.
 
         Args:
             df: DataFrame to cache
@@ -83,18 +85,18 @@ class StatsAnalyzer:
         Returns:
             The DataFrame (cached if possible, original otherwise)
         """
+        # Check for serverless/Connect environment BEFORE calling cache
+        # because cache() may succeed but fail later during execution
+        if is_serverless_environment(df):
+            logger.debug("Skipping cache (serverless/Connect environment detected)")
+            return df
+
         try:
             df.cache()
             return df
         except BaseException as e:
-            error_msg = str(e).lower()
-            if any(
-                pattern in error_msg
-                for pattern in ["persist", "not supported", "serverless", "cache"]
-            ):
-                logger.debug(f"Cache not available (serverless mode): {e}")
-                return df
-            raise
+            logger.debug(f"Cache failed, continuing without cache: {e}")
+            return df
 
     def analyze(self, df: DataFrame) -> DataFrameStats:
         """Analyze a DataFrame and compute statistics.

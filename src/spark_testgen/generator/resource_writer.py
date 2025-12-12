@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
     from pyspark.sql.types import StructType
 
+from ..utils import is_serverless_environment
 from .paths import TestPaths
 
 logger = logging.getLogger(__name__)
@@ -81,8 +82,8 @@ class ResourceWriter:
 
         Supports multiple execution environments:
         - Classic PySpark with local filesystem access
-        - Spark Connect (may require pandas fallback)
-        - Serverless Spark (PERSIST TABLE not supported, uses pandas)
+        - Spark Connect (uses pandas fallback)
+        - Serverless Spark (uses pandas fallback)
 
         Args:
             df: DataFrame to write
@@ -96,7 +97,15 @@ class ResourceWriter:
 
             shutil.rmtree(path_str)
 
-        # Try native Spark write first
+        # Check for serverless/Connect environment BEFORE trying Spark write
+        # This avoids deferred execution errors where the write appears to
+        # succeed but fails later during query execution
+        if is_serverless_environment(df):
+            logger.debug("Serverless environment detected, using pandas for write")
+            self._write_dataframe_via_pandas(df, path)
+            return
+
+        # Try native Spark write for classic PySpark
         try:
             # Coalesce to single file for simplicity
             df.coalesce(1).write.mode(
@@ -105,28 +114,11 @@ class ResourceWriter:
             logger.debug(f"Wrote DataFrame to {path_str} (native Spark)")
             return
         except BaseException as e:
-            # Check for serverless/Connect errors
-            error_msg = str(e).lower()
-            is_serverless_error = any(
-                pattern in error_msg
-                for pattern in [
-                    "persist",
-                    "not supported",
-                    "serverless",
-                    "write not supported",
-                    "connect",
-                ]
-            )
-
-            if not is_serverless_error:
-                # Re-raise if it's not a known serverless restriction
-                raise
-
             logger.debug(
-                f"Native Spark write not available, falling back to pandas: {e}"
+                f"Native Spark write failed, falling back to pandas: {e}"
             )
 
-        # Fallback: Use pandas for serverless/Connect environments
+        # Fallback: Use pandas
         self._write_dataframe_via_pandas(df, path)
 
     def _write_dataframe_via_pandas(self, df: DataFrame, path: Path) -> None:
