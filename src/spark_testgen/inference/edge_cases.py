@@ -96,19 +96,6 @@ class EdgeCaseSynthesizer:
 
     def _generate_all_nulls_row(self, schema: StructType) -> tuple[Any, ...] | None:
         """Generate row with all nullable columns as null."""
-        from pyspark.sql.types import (
-            ArrayType,
-            BooleanType,
-            DateType,
-            DoubleType,
-            FloatType,
-            IntegerType,
-            LongType,
-            MapType,
-            StringType,
-            StructType,
-            TimestampType,
-        )
 
         values = []
         has_nullable = False
@@ -237,9 +224,7 @@ class EdgeCaseSynthesizer:
 
         return tuple(values) if has_string else None
 
-    def _generate_mixed_edge_row(
-        self, schema: StructType, idx: int
-    ) -> tuple[Any, ...] | None:
+    def _generate_mixed_edge_row(self, schema: StructType, idx: int) -> tuple[Any, ...] | None:
         """Generate row with mixed edge cases."""
         values = []
 
@@ -323,9 +308,7 @@ class EdgeCaseSynthesizer:
 
         if isinstance(data_type, StructType):
             # Recursively generate default struct
-            inner_values = [
-                self._default_value(f.dataType) for f in data_type.fields
-            ]
+            inner_values = [self._default_value(f.dataType) for f in data_type.fields]
             return tuple(inner_values)
 
         return None

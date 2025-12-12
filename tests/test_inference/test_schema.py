@@ -2,17 +2,15 @@
 
 from __future__ import annotations
 
-import pytest
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
-    ArrayType,
     IntegerType,
     StringType,
     StructField,
     StructType,
 )
 
-from spark_testgen.inference.schema import SchemaAnalyzer, SchemaAnalysis, SchemaComparison
+from spark_testgen.inference.schema import SchemaAnalyzer
 
 
 class TestSchemaAnalyzer:
@@ -61,10 +59,12 @@ class TestSchemaAnalyzer:
 
     def test_schema_to_code(self, _spark: SparkSession):
         """Test generating Python code for schema."""
-        schema = StructType([
-            StructField("id", IntegerType(), False),
-            StructField("name", StringType(), True),
-        ])
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), False),
+                StructField("name", StringType(), True),
+            ]
+        )
 
         analyzer = SchemaAnalyzer()
         code = analyzer.schema_to_code(schema)

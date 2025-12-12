@@ -93,9 +93,7 @@ class SchemaAnalyzer:
 
         return analysis
 
-    def compare(
-        self, input_schema: StructType, output_schema: StructType
-    ) -> SchemaComparison:
+    def compare(self, input_schema: StructType, output_schema: StructType) -> SchemaComparison:
         """Compare input and output schemas.
 
         Args:
@@ -161,9 +159,7 @@ class SchemaAnalyzer:
         for struct_field in schema.fields:
             type_code = self._type_to_code(struct_field.dataType)
             nullable = str(struct_field.nullable)
-            lines.append(
-                f'    StructField("{struct_field.name}", {type_code}, {nullable}),'
-            )
+            lines.append(f'    StructField("{struct_field.name}", {type_code}, {nullable}),')
         lines.append("])")
         return "\n".join(lines)
 
@@ -217,9 +213,7 @@ class SchemaAnalyzer:
             inner_fields = []
             for f in data_type.fields:
                 inner_type = self._type_to_code(f.dataType)
-                inner_fields.append(
-                    f'StructField("{f.name}", {inner_type}, {f.nullable})'
-                )
+                inner_fields.append(f'StructField("{f.name}", {inner_type}, {f.nullable})')
             fields_str = ", ".join(inner_fields)
             return f"StructType([{fields_str}])"
 

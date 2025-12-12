@@ -38,9 +38,7 @@ def sample_df(spark: SparkSession):
         (3, None, 300, True),
         (4, "Diana", None, None),
     ]
-    return spark.createDataFrame(
-        data, ["id", "name", "value", "active"]
-    )
+    return spark.createDataFrame(data, ["id", "name", "value", "active"])
 
 
 @pytest.fixture
@@ -51,9 +49,7 @@ def sample_df_with_nulls(spark: SparkSession):
         (1, "", 0, True),
         (2, "test", -1, False),
     ]
-    return spark.createDataFrame(
-        data, ["id", "name", "value", "active"]
-    )
+    return spark.createDataFrame(data, ["id", "name", "value", "active"])
 
 
 @pytest.fixture
@@ -68,19 +64,23 @@ def complex_schema_df(spark: SparkSession):
         StructType,
     )
 
-    schema = StructType([
-        StructField("id", IntegerType(), False),
-        StructField("tags", ArrayType(StringType()), True),
-        StructField("metadata", MapType(StringType(), IntegerType()), True),
-        StructField(
-            "nested",
-            StructType([
-                StructField("inner_id", IntegerType(), True),
-                StructField("inner_name", StringType(), True),
-            ]),
-            True,
-        ),
-    ])
+    schema = StructType(
+        [
+            StructField("id", IntegerType(), False),
+            StructField("tags", ArrayType(StringType()), True),
+            StructField("metadata", MapType(StringType(), IntegerType()), True),
+            StructField(
+                "nested",
+                StructType(
+                    [
+                        StructField("inner_id", IntegerType(), True),
+                        StructField("inner_name", StringType(), True),
+                    ]
+                ),
+                True,
+            ),
+        ]
+    )
 
     data = [
         (1, ["a", "b"], {"x": 1, "y": 2}, (10, "inner1")),

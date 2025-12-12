@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import hashlib
 import random
 import string
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from pyspark.sql import DataFrame, SparkSession
+    from pyspark.sql import DataFrame
 
 from ..config import Mode
 
@@ -88,7 +87,6 @@ class Masker:
         for field in schema.fields:
             col_name = field.name
             data_type = field.dataType
-            type_name = type(data_type).__name__
 
             if isinstance(data_type, StringType):
                 # Hash strings to preserve uniqueness
@@ -113,9 +111,7 @@ class Masker:
                     F.when(
                         F.col(col_name).isNull(),
                         F.lit(None),
-                    ).otherwise(
-                        F.abs(F.col(col_name) + offset) % 10000
-                    ),
+                    ).otherwise(F.abs(F.col(col_name) + offset) % 10000),
                 )
 
             elif isinstance(data_type, (DoubleType, FloatType)):
@@ -126,9 +122,7 @@ class Masker:
                     F.when(
                         F.col(col_name).isNull(),
                         F.lit(None),
-                    ).otherwise(
-                        F.round(F.col(col_name) * scale, 2)
-                    ),
+                    ).otherwise(F.round(F.col(col_name) * scale, 2)),
                 )
 
             elif isinstance(data_type, DateType):
@@ -139,9 +133,7 @@ class Masker:
                     F.when(
                         F.col(col_name).isNull(),
                         F.lit(None),
-                    ).otherwise(
-                        F.date_add(F.col(col_name), days_offset)
-                    ),
+                    ).otherwise(F.date_add(F.col(col_name), days_offset)),
                 )
 
             elif isinstance(data_type, TimestampType):
@@ -152,9 +144,7 @@ class Masker:
                     F.when(
                         F.col(col_name).isNull(),
                         F.lit(None),
-                    ).otherwise(
-                        F.col(col_name) + F.expr(f"INTERVAL {seconds_offset} SECONDS")
-                    ),
+                    ).otherwise(F.col(col_name) + F.expr(f"INTERVAL {seconds_offset} SECONDS")),
                 )
 
             elif isinstance(data_type, BooleanType):
@@ -199,23 +189,6 @@ class Masker:
         Returns:
             Tuple of synthetic values
         """
-        from pyspark.sql.types import (
-            ArrayType,
-            BinaryType,
-            BooleanType,
-            ByteType,
-            DateType,
-            DecimalType,
-            DoubleType,
-            FloatType,
-            IntegerType,
-            LongType,
-            MapType,
-            ShortType,
-            StringType,
-            StructType,
-            TimestampType,
-        )
 
         values = []
         for field in schema.fields:
@@ -241,6 +214,8 @@ class Masker:
         Returns:
             Synthetic value
         """
+        from decimal import Decimal
+
         from pyspark.sql.types import (
             ArrayType,
             BinaryType,
@@ -258,9 +233,6 @@ class Masker:
             StructType,
             TimestampType,
         )
-        from decimal import Decimal
-
-        type_name = type(data_type).__name__
 
         if isinstance(data_type, StringType):
             return f"synthetic_{idx}_{self._random_string(6)}"
@@ -295,9 +267,7 @@ class Masker:
 
         if isinstance(data_type, TimestampType):
             base = datetime(2024, 1, 1, 12, 0, 0)
-            return base + timedelta(
-                days=idx, seconds=self._random.randint(0, 86400)
-            )
+            return base + timedelta(days=idx, seconds=self._random.randint(0, 86400))
 
         if isinstance(data_type, BinaryType):
             return bytes([self._random.randint(0, 255) for _ in range(8)])
@@ -305,10 +275,7 @@ class Masker:
         if isinstance(data_type, ArrayType):
             element_type = data_type.elementType
             length = self._random.randint(1, 3)
-            return [
-                self._generate_value_for_type(element_type, idx + i)
-                for i in range(length)
-            ]
+            return [self._generate_value_for_type(element_type, idx + i) for i in range(length)]
 
         if isinstance(data_type, MapType):
             key_type = data_type.keyType

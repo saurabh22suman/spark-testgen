@@ -15,11 +15,10 @@ ensuring graceful degradation when JVM internals are unavailable.
 from __future__ import annotations
 
 import io
-import sys
 from contextlib import redirect_stdout
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
@@ -117,9 +116,7 @@ class PlanExtractor:
         if result.success:
             return result
 
-        return PlanResult.unavailable(
-            "No plan extraction method available for this DataFrame type"
-        )
+        return PlanResult.unavailable("No plan extraction method available for this DataFrame type")
 
     def get_physical_plan(self, df: DataFrame) -> PlanResult:
         """Extract the physical execution plan from a DataFrame.
@@ -162,9 +159,7 @@ class PlanExtractor:
                 success=True,
             )
 
-        return PlanResult.unavailable(
-            "No plan extraction method available for this DataFrame type"
-        )
+        return PlanResult.unavailable("No plan extraction method available for this DataFrame type")
 
     def get_extended_plan(self, df: DataFrame) -> PlanResult:
         """Extract the full extended plan (logical + physical) from a DataFrame.
@@ -200,9 +195,7 @@ class PlanExtractor:
                 success=True,
             )
 
-        return PlanResult.unavailable(
-            "No plan extraction method available for this DataFrame type"
-        )
+        return PlanResult.unavailable("No plan extraction method available for this DataFrame type")
 
     def has_jvm_access(self, df: DataFrame) -> bool:
         """Check if JVM-based plan extraction is available for this DataFrame.
@@ -295,7 +288,7 @@ class PlanExtractor:
             return PlanResult.unavailable("_explain_string method not available")
 
         try:
-            explain_string_method = getattr(df, "_explain_string")
+            explain_string_method = df._explain_string
 
             # Try calling with mode parameter (Spark 3.0+)
             try:

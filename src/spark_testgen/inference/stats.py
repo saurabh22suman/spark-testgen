@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
-    from pyspark.sql.types import StructType
 
 from ..utils import is_serverless_environment
 

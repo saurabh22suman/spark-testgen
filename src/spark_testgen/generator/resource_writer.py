@@ -108,15 +108,11 @@ class ResourceWriter:
         # Try native Spark write for classic PySpark
         try:
             # Coalesce to single file for simplicity
-            df.coalesce(1).write.mode(
-                "overwrite" if self.overwrite else "error"
-            ).parquet(path_str)
+            df.coalesce(1).write.mode("overwrite" if self.overwrite else "error").parquet(path_str)
             logger.debug(f"Wrote DataFrame to {path_str} (native Spark)")
             return
         except BaseException as e:
-            logger.debug(
-                f"Native Spark write failed, falling back to pandas: {e}"
-            )
+            logger.debug(f"Native Spark write failed, falling back to pandas: {e}")
 
         # Fallback: Use pandas
         self._write_dataframe_via_pandas(df, path)
@@ -151,9 +147,7 @@ class ResourceWriter:
                 "pip install pandas pyarrow"
             ) from e
         except BaseException as e:
-            raise RuntimeError(
-                f"Failed to write DataFrame via pandas fallback: {e}"
-            ) from e
+            raise RuntimeError(f"Failed to write DataFrame via pandas fallback: {e}") from e
 
     def _write_text(self, content: str, path: Path) -> None:
         """Write text content to file.

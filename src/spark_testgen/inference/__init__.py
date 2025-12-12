@@ -10,9 +10,9 @@ from .plan_extractor import (
     PlanExtractor,
     PlanResult,
     PlanType,
+    get_extended_plan,
     get_logical_plan,
     get_physical_plan,
-    get_extended_plan,
     has_jvm_access,
 )
 from .schema import SchemaAnalyzer

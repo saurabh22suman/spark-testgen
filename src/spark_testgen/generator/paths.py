@@ -77,7 +77,4 @@ class TestPaths:
         }
 
     def __repr__(self) -> str:
-        return (
-            f"TestPaths(function_name={self.function_name!r}, "
-            f"base_dir={self.base_dir!r})"
-        )
+        return f"TestPaths(function_name={self.function_name!r}, base_dir={self.base_dir!r})"

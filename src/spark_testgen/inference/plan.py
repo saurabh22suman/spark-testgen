@@ -9,8 +9,6 @@ from typing import TYPE_CHECKING
 from .plan_extractor import (
     ExtractionMethod,
     PlanExtractor,
-    PlanResult,
-    PlanType,
     get_logical_plan,
     get_physical_plan,
     has_jvm_access,
@@ -153,9 +151,7 @@ class PlanAnalyzer:
 
         # Use the method from logical plan (or physical if logical failed)
         extraction_method = (
-            logical_result.method
-            if logical_result.success
-            else physical_result.method
+            logical_result.method if logical_result.success else physical_result.method
         )
 
         return PlanAnalysis(

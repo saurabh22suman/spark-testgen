@@ -4,17 +4,15 @@ from __future__ import annotations
 
 from unittest import mock
 
-import pytest
-from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import SparkSession
 
 from spark_testgen.inference.plan_extractor import (
     ExtractionMethod,
     PlanExtractor,
     PlanResult,
-    PlanType,
+    get_extended_plan,
     get_logical_plan,
     get_physical_plan,
-    get_extended_plan,
     has_jvm_access,
 )
 

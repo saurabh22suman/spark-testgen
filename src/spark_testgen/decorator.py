@@ -106,7 +106,7 @@ def autogen_tests(func: F) -> F:
     return wrapper  # type: ignore[return-value]
 
 
-def _run_pipeline(observation: "Observation", config: Config) -> None:
+def _run_pipeline(observation: Observation, config: Config) -> None:
     """Run the full test generation pipeline.
 
     Args:
@@ -130,13 +130,11 @@ def _run_pipeline(observation: "Observation", config: Config) -> None:
 
     input_analysis = schema_analyzer.analyze(observation.input_schema)
     output_analysis = schema_analyzer.analyze(observation.output_schema)
-    schema_comparison = schema_analyzer.compare(
-        observation.input_schema, observation.output_schema
-    )
+    schema_comparison = schema_analyzer.compare(observation.input_schema, observation.output_schema)
 
     # Normalize plans for comparison
-    normalized_logical = plan_analyzer.normalize_plan(observation.logical_plan)
-    normalized_physical = plan_analyzer.normalize_plan(observation.physical_plan)
+    plan_analyzer.normalize_plan(observation.logical_plan)
+    plan_analyzer.normalize_plan(observation.physical_plan)
 
     # Mask/synthesize sample data based on mode
     masked_input = masker.process(observation.input_sample)
