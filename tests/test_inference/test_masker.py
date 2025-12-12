@@ -18,7 +18,7 @@ class TestMasker:
         assert masker.mode == Mode.MASKED
         assert masker.seed == 42
 
-    def test_masker_unsafe_raw_passthrough(self, spark: SparkSession, sample_df):
+    def test_masker_unsafe_raw_passthrough(self, _spark: SparkSession, sample_df):
         """Test unsafe_raw mode passes data through unchanged."""
         masker = Masker(mode=Mode.UNSAFE_RAW)
         result = masker.process(sample_df)
@@ -26,7 +26,7 @@ class TestMasker:
         # Should be the same DataFrame
         assert result.collect() == sample_df.collect()
 
-    def test_masker_masked_changes_strings(self, spark: SparkSession, sample_df):
+    def test_masker_masked_changes_strings(self, _spark: SparkSession, sample_df):
         """Test masked mode changes string values."""
         masker = Masker(mode=Mode.MASKED, seed=42)
         result = masker.process(sample_df)
@@ -40,7 +40,7 @@ class TestMasker:
         for name in masked_names:
             assert name.startswith("masked_")
 
-    def test_masker_preserves_nulls(self, spark: SparkSession, sample_df):
+    def test_masker_preserves_nulls(self, _spark: SparkSession, sample_df):
         """Test masker preserves null values."""
         masker = Masker(mode=Mode.MASKED)
         result = masker.process(sample_df)
@@ -51,7 +51,7 @@ class TestMasker:
 
         assert original_null_count == result_null_count
 
-    def test_masker_synthetic_generates_data(self, spark: SparkSession, sample_df):
+    def test_masker_synthetic_generates_data(self, _spark: SparkSession, sample_df):
         """Test synthetic mode generates new data."""
         masker = Masker(mode=Mode.SYNTHETIC, seed=42)
         result = masker.process(sample_df)
@@ -65,7 +65,7 @@ class TestMasker:
         for name in names:
             assert "synthetic_" in name
 
-    def test_masker_deterministic(self, spark: SparkSession, sample_df):
+    def test_masker_deterministic(self, _spark: SparkSession, sample_df):
         """Test masker produces same results with same seed."""
         masker1 = Masker(mode=Mode.MASKED, seed=123)
         masker2 = Masker(mode=Mode.MASKED, seed=123)

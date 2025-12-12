@@ -50,7 +50,7 @@ class TestPlanExtractor:
         extractor = PlanExtractor()
         assert extractor._jvm_available is None  # Not yet determined
 
-    def test_get_logical_plan_classic_spark(self, spark: SparkSession, sample_df):
+    def test_get_logical_plan_classic_spark(self, _spark: SparkSession, sample_df):
         """Test logical plan extraction with classic Spark."""
         extractor = PlanExtractor()
         result = extractor.get_logical_plan(sample_df)
@@ -64,7 +64,7 @@ class TestPlanExtractor:
             ExtractionMethod.EXPLAIN_CAPTURE,
         )
 
-    def test_get_physical_plan_classic_spark(self, spark: SparkSession, sample_df):
+    def test_get_physical_plan_classic_spark(self, _spark: SparkSession, sample_df):
         """Test physical plan extraction with classic Spark."""
         extractor = PlanExtractor()
         result = extractor.get_physical_plan(sample_df)
@@ -72,7 +72,7 @@ class TestPlanExtractor:
         assert result.success is True
         assert len(result.plan) > 0
 
-    def test_get_extended_plan(self, spark: SparkSession, sample_df):
+    def test_get_extended_plan(self, _spark: SparkSession, sample_df):
         """Test extended plan extraction."""
         extractor = PlanExtractor()
         result = extractor.get_extended_plan(sample_df)
@@ -80,7 +80,7 @@ class TestPlanExtractor:
         assert result.success is True
         assert len(result.plan) > 0
 
-    def test_has_jvm_access_classic_spark(self, spark: SparkSession, sample_df):
+    def test_has_jvm_access_classic_spark(self, _spark: SparkSession, sample_df):
         """Test JVM access detection with classic Spark."""
         extractor = PlanExtractor()
         # Classic Spark should have JVM access
@@ -101,7 +101,7 @@ class TestPlanExtractor:
         plan_lower = result.plan.lower()
         assert "filter" in plan_lower or ">" in result.plan
 
-    def test_fallback_when_jvm_unavailable(self, spark: SparkSession, sample_df):
+    def test_fallback_when_jvm_unavailable(self, _spark: SparkSession, sample_df):
         """Test fallback methods when JVM access is blocked."""
         extractor = PlanExtractor()
 
@@ -120,7 +120,7 @@ class TestPlanExtractor:
 class TestPlanExtractorEdgeCases:
     """Tests for edge cases and error handling."""
 
-    def test_handles_transformed_dataframe(self, spark: SparkSession, sample_df):
+    def test_handles_transformed_dataframe(self, _spark: SparkSession, sample_df):
         """Test plan extraction on a transformed DataFrame."""
         transformed = (
             sample_df.filter(sample_df.value > 100)
@@ -135,7 +135,7 @@ class TestPlanExtractorEdgeCases:
         assert logical.success is True
         assert physical.success is True
 
-    def test_handles_aggregation(self, spark: SparkSession, sample_df):
+    def test_handles_aggregation(self, _spark: SparkSession, sample_df):
         """Test plan extraction on aggregated DataFrame."""
         from pyspark.sql import functions as F
 
@@ -175,25 +175,25 @@ class TestPlanExtractorEdgeCases:
 class TestModuleFunctions:
     """Tests for module-level convenience functions."""
 
-    def test_get_logical_plan_function(self, spark: SparkSession, sample_df):
+    def test_get_logical_plan_function(self, _spark: SparkSession, sample_df):
         """Test module-level get_logical_plan function."""
         plan = get_logical_plan(sample_df)
         assert isinstance(plan, str)
         assert len(plan) > 0
 
-    def test_get_physical_plan_function(self, spark: SparkSession, sample_df):
+    def test_get_physical_plan_function(self, _spark: SparkSession, sample_df):
         """Test module-level get_physical_plan function."""
         plan = get_physical_plan(sample_df)
         assert isinstance(plan, str)
         assert len(plan) > 0
 
-    def test_get_extended_plan_function(self, spark: SparkSession, sample_df):
+    def test_get_extended_plan_function(self, _spark: SparkSession, sample_df):
         """Test module-level get_extended_plan function."""
         plan = get_extended_plan(sample_df)
         assert isinstance(plan, str)
         assert len(plan) > 0
 
-    def test_has_jvm_access_function(self, spark: SparkSession, sample_df):
+    def test_has_jvm_access_function(self, _spark: SparkSession, sample_df):
         """Test module-level has_jvm_access function."""
         result = has_jvm_access(sample_df)
         assert isinstance(result, bool)
@@ -202,7 +202,7 @@ class TestModuleFunctions:
 class TestSparkConnectSimulation:
     """Tests simulating Spark Connect behavior where JVM is unavailable."""
 
-    def test_graceful_degradation_no_jdf(self, spark: SparkSession, sample_df):
+    def test_graceful_degradation_no_jdf(self, _spark: SparkSession, sample_df):
         """Test behavior when _jdf attribute is missing."""
         extractor = PlanExtractor()
 
@@ -225,7 +225,7 @@ class TestSparkConnectSimulation:
         # Should detect no JVM access
         assert extractor.has_jvm_access(mock_df) is False
 
-    def test_graceful_degradation_jdf_none(self, spark: SparkSession, sample_df):
+    def test_graceful_degradation_jdf_none(self, _spark: SparkSession, sample_df):
         """Test behavior when _jdf is None."""
         extractor = PlanExtractor()
 
@@ -243,7 +243,7 @@ class TestSparkConnectSimulation:
         # Should detect no JVM access
         assert extractor.has_jvm_access(mock_df) is False
 
-    def test_graceful_degradation_jdf_raises(self, spark: SparkSession, sample_df):
+    def test_graceful_degradation_jdf_raises(self, _spark: SparkSession, sample_df):
         """Test behavior when accessing _jdf raises exception."""
         extractor = PlanExtractor()
 
