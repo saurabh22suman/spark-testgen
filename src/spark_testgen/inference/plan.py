@@ -6,6 +6,16 @@ import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from .plan_extractor import (
+    ExtractionMethod,
+    PlanExtractor,
+    PlanResult,
+    PlanType,
+    get_logical_plan,
+    get_physical_plan,
+    has_jvm_access,
+)
+
 if TYPE_CHECKING:
     from pyspark.sql import DataFrame
 
@@ -20,6 +30,8 @@ class PlanAnalysis:
         normalized_logical_plan: Plan with volatile parts removed
         normalized_physical_plan: Plan with volatile parts removed
         detected_operations: List of detected Spark operations
+        extraction_method: Method used to extract the plans
+        jvm_available: Whether JVM-based extraction was available
     """
 
     raw_logical_plan: str
@@ -27,6 +39,8 @@ class PlanAnalysis:
     normalized_logical_plan: str
     normalized_physical_plan: str
     detected_operations: list[str]
+    extraction_method: ExtractionMethod = ExtractionMethod.UNAVAILABLE
+    jvm_available: bool = False
 
 
 class PlanAnalyzer:
@@ -35,6 +49,9 @@ class PlanAnalyzer:
     Provides utilities to extract and normalize plans for soft regression testing.
     Plans are normalized to remove volatile parts (IDs, timestamps, paths) that
     would cause false positives in comparison tests.
+
+    This analyzer uses the universal PlanExtractor which works across all
+    PySpark environments including Spark Connect and serverless Spark.
     """
 
     # Patterns to remove from plans for normalization
@@ -59,8 +76,14 @@ class PlanAnalyzer:
         (r"batchId=\d+", "batchId=ID"),
     ]
 
+    def __init__(self) -> None:
+        """Initialize the plan analyzer with a universal extractor."""
+        self._extractor = PlanExtractor()
+
     def extract_logical_plan(self, df: DataFrame) -> str:
         """Extract logical execution plan from DataFrame.
+
+        Uses the universal PlanExtractor which works across all environments.
 
         Args:
             df: DataFrame to extract plan from
@@ -68,13 +91,12 @@ class PlanAnalyzer:
         Returns:
             String representation of logical plan
         """
-        try:
-            return df._jdf.queryExecution().logical().toString()
-        except Exception as e:
-            return f"<unable to extract logical plan: {e}>"
+        return get_logical_plan(df)
 
     def extract_physical_plan(self, df: DataFrame) -> str:
         """Extract physical execution plan from DataFrame.
+
+        Uses the universal PlanExtractor which works across all environments.
 
         Args:
             df: DataFrame to extract plan from
@@ -82,10 +104,7 @@ class PlanAnalyzer:
         Returns:
             String representation of physical plan
         """
-        try:
-            return df._jdf.queryExecution().executedPlan().toString()
-        except Exception as e:
-            return f"<unable to extract physical plan: {e}>"
+        return get_physical_plan(df)
 
     def normalize_plan(self, plan: str) -> str:
         """Normalize a plan by removing volatile parts.
@@ -117,14 +136,27 @@ class PlanAnalyzer:
     def analyze(self, df: DataFrame) -> PlanAnalysis:
         """Perform full plan analysis on a DataFrame.
 
+        Uses the universal PlanExtractor for environment-agnostic extraction.
+
         Args:
             df: DataFrame to analyze
 
         Returns:
-            PlanAnalysis with raw and normalized plans
+            PlanAnalysis with raw and normalized plans, plus extraction metadata
         """
-        logical = self.extract_logical_plan(df)
-        physical = self.extract_physical_plan(df)
+        # Get plan results with metadata
+        logical_result = self._extractor.get_logical_plan(df)
+        physical_result = self._extractor.get_physical_plan(df)
+
+        logical = logical_result.plan
+        physical = physical_result.plan
+
+        # Use the method from logical plan (or physical if logical failed)
+        extraction_method = (
+            logical_result.method
+            if logical_result.success
+            else physical_result.method
+        )
 
         return PlanAnalysis(
             raw_logical_plan=logical,
@@ -132,6 +164,8 @@ class PlanAnalyzer:
             normalized_logical_plan=self.normalize_plan(logical),
             normalized_physical_plan=self.normalize_plan(physical),
             detected_operations=self._detect_operations(logical),
+            extraction_method=extraction_method,
+            jvm_available=has_jvm_access(df),
         )
 
     def _detect_operations(self, logical_plan: str) -> list[str]:
