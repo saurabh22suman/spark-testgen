@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -22,8 +23,7 @@ def is_serverless_environment(df: DataFrame) -> bool:
     - Direct JVM access via _jdf
     - PERSIST TABLE operations
 
-    This function detects such environments by checking for Spark Connect
-    client characteristics. The result is cached per SparkSession.
+    This function uses multiple detection strategies and caches the result.
 
     Args:
         df: A DataFrame to check (used to access SparkSession)
@@ -40,41 +40,75 @@ def is_serverless_environment(df: DataFrame) -> bool:
         if session_id in _serverless_cache:
             return _serverless_cache[session_id]
 
-        # Detection method 1: Check DataFrame class name
-        # Spark Connect DataFrames have different class paths
-        df_class = type(df).__module__
-        is_connect = "connect" in df_class.lower()
+        # Detection method 1: Environment variable for Databricks serverless
+        # This is the most reliable check for Databricks
+        if os.environ.get("DATABRICKS_RUNTIME_VERSION"):
+            # Check if it's serverless (no persistent compute)
+            compute_type = os.environ.get("SPARK_CONNECT_MODE", "")
+            is_serverless = os.environ.get("IS_SERVERLESS", "").lower() == "true"
+            
+            # Also check for Spark Connect client indicators
+            if is_serverless or compute_type:
+                logger.debug(f"Detected Databricks serverless via env vars")
+                _serverless_cache[session_id] = True
+                return True
 
-        if is_connect:
-            logger.debug(f"Detected Spark Connect from DataFrame module: {df_class}")
+        # Detection method 2: Check DataFrame class hierarchy for Connect
+        df_class_name = type(df).__name__
+        df_module = type(df).__module__
+        
+        logger.debug(f"DataFrame class check: {df_module}.{df_class_name}")
+        
+        # Spark Connect DataFrames are in pyspark.sql.connect module
+        if "connect" in df_module.lower() or "connect" in df_class_name.lower():
+            logger.debug(f"Detected Spark Connect from class: {df_module}.{df_class_name}")
+            _serverless_cache[session_id] = True
+            return True
+        
+        # Detection method 3: Check SparkSession class for Connect
+        session_class_name = type(session).__name__
+        session_module = type(session).__module__
+        
+        logger.debug(f"Session class check: {session_module}.{session_class_name}")
+        
+        if "connect" in session_module.lower() or "connect" in session_class_name.lower():
+            logger.debug(f"Detected Spark Connect from session: {session_module}.{session_class_name}")
             _serverless_cache[session_id] = True
             return True
 
-        # Detection method 2: Check SparkSession class
-        session_class = type(session).__module__
-        is_connect_session = "connect" in session_class.lower()
-
-        if is_connect_session:
-            logger.debug(f"Detected Spark Connect from Session module: {session_class}")
+        # Detection method 3: Check if _jdf attribute is actually accessible
+        # This is the definitive test - try to actually use _jdf
+        if not hasattr(df, "_jdf"):
+            logger.debug("No _jdf attribute - assuming Spark Connect")
             _serverless_cache[session_id] = True
             return True
 
-        # Detection method 3: Try to access _jdf (will fail on Connect)
-        # This is a definitive test but we do it last as it's more expensive
         try:
-            _ = df._jdf
-            # If we get here without exception, JVM access works
+            # Actually try to access _jdf - this will raise on Connect
+            jdf = df._jdf
+            if jdf is None:
+                logger.debug("_jdf is None - assuming Spark Connect")
+                _serverless_cache[session_id] = True
+                return True
+            
+            # Try to call a method on it to be sure
+            _ = jdf.queryExecution()
+            
+            # If we get here, JVM access works - not serverless
+            logger.debug("JVM access confirmed - not serverless")
             _serverless_cache[session_id] = False
             return False
-        except BaseException:
-            # _jdf access failed - this is a Connect/serverless environment
-            logger.debug("Detected serverless: _jdf access failed")
+            
+        except BaseException as e:
+            # Any error accessing _jdf means Connect/serverless
+            error_str = str(e).lower()
+            logger.debug(f"_jdf access failed ({type(e).__name__}): {e}")
             _serverless_cache[session_id] = True
             return True
 
     except BaseException as e:
         # If anything fails during detection, assume serverless for safety
-        logger.debug(f"Environment detection failed, assuming serverless: {e}")
+        logger.warning(f"Environment detection failed, assuming serverless: {e}")
         return True
 
 
