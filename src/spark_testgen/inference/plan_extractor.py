@@ -238,7 +238,7 @@ class PlanExtractor:
                 method=ExtractionMethod.JVM_QUERY_EXECUTION,
                 success=True,
             )
-        except BaseException as e:
+        except Exception as e:
             # Catch ALL exceptions including Spark Connect errors
             return PlanResult.unavailable(f"JVM logical plan extraction failed: {e}")
 
@@ -266,7 +266,7 @@ class PlanExtractor:
                 method=ExtractionMethod.JVM_QUERY_EXECUTION,
                 success=True,
             )
-        except BaseException as e:
+        except Exception as e:
             # Catch ALL exceptions including Spark Connect errors
             return PlanResult.unavailable(f"JVM physical plan extraction failed: {e}")
 
