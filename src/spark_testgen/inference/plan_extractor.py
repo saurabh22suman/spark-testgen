@@ -407,13 +407,13 @@ class PlanExtractor:
             self._jvm_available = True
             return True
 
-        except BaseException:
+        except Exception:
             # Catch ALL exceptions including:
             # - pyspark.errors.PySparkAttributeError (JVM_ATTRIBUTE_NOT_SUPPORTED)
             # - py4j.protocol.Py4JError
             # - AttributeError, TypeError
             # - Any other exception from Spark Connect or remote clients
-            # Using BaseException to ensure we catch everything
+            # Using Exception to ensure we catch all standard errors, but not system-exiting exceptions
             self._jvm_available = False
             return False
 
