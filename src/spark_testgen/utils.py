@@ -31,14 +31,12 @@ def is_serverless_environment(df: DataFrame) -> bool:
     # Simple and direct: check if DataFrame is from pyspark.sql.connect module
     df_module = type(df).__module__
     
-    print(f"[spark-testgen] Checking DataFrame module: {df_module}")
-    
     # Spark Connect DataFrames are in pyspark.sql.connect.dataframe
     if "connect" in df_module.lower():
-        print("[spark-testgen] => Spark Connect detected, skipping cache")
+        logger.debug(f"Spark Connect detected from module: {df_module}")
         return True
     
-    print("[spark-testgen] => Classic PySpark detected")
+    logger.debug(f"Classic PySpark detected from module: {df_module}")
     return False
 
 

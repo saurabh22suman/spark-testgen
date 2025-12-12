@@ -259,10 +259,11 @@ class TestWriter:
         if schema_comparison.added_fields:
             added_list = ", ".join(f'"{f}"' for f in schema_comparison.added_fields)
             added_check = f'''
-        # Verify expected new columns are present
-        expected_added = [{added_list}]
-        for col in expected_added:
-            assert col in output_cols, f"Expected added column '{{col}}' not found"'''
+
+                    # Verify expected new columns are present
+                    expected_added = [{added_list}]
+                    for col in expected_added:
+                        assert col in output_cols, f"Expected added column '{{col}}' not found"'''
 
         return dedent(f'''\
             # =============================================================================
@@ -290,8 +291,7 @@ class TestWriter:
                     output_cols = [f.name for f in result.schema.fields]
 
                     for name, dtype, nullable in expected_fields:
-                        assert name in output_cols, f"Missing field: {{name}}"
-            {added_check}
+                        assert name in output_cols, f"Missing field: {{name}}"{added_check}
 
                 def test_schema_matches_snapshot(
                     self, spark: SparkSession, expected_output_df: DataFrame, input_df: DataFrame
@@ -411,7 +411,6 @@ class TestWriter:
                 changes to query structure.
                 """
 
-                @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledCoroutineWarning")
                 def test_logical_plan_stable(
                     self,
                     spark: SparkSession,
