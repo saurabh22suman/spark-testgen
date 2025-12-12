@@ -28,6 +28,12 @@ jobs:
           distribution: 'temurin'
           java-version: '11'
 
+      - name: Verify Java installation
+        run: |
+          echo "JAVA_HOME: $JAVA_HOME"
+          java -version
+          which java
+
       - name: Cache pip packages
         uses: actions/cache@v4
         with:

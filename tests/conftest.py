@@ -29,6 +29,16 @@ def spark() -> SparkSession:
     spark.stop()
 
 
+@pytest.fixture(scope="session")
+def _spark(spark: SparkSession) -> SparkSession:
+    """Alias for spark fixture for tests that don't use the session directly.
+
+    This allows tests to declare they need spark initialized (for sample_df)
+    without triggering unused-argument linter warnings.
+    """
+    return spark
+
+
 @pytest.fixture
 def sample_df(spark: SparkSession):
     """Create a sample DataFrame for testing."""
