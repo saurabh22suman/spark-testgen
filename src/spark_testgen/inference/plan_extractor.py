@@ -238,8 +238,8 @@ class PlanExtractor:
                 method=ExtractionMethod.JVM_QUERY_EXECUTION,
                 success=True,
             )
-        except BaseException as e:
-            # Catch ALL exceptions including Spark Connect errors
+        except Exception as e:
+            # Catch application exceptions including Spark Connect errors
             return PlanResult.unavailable(f"JVM logical plan extraction failed: {e}")
 
     def _try_jvm_physical_plan(self, df: DataFrame) -> PlanResult:
@@ -266,8 +266,8 @@ class PlanExtractor:
                 method=ExtractionMethod.JVM_QUERY_EXECUTION,
                 success=True,
             )
-        except BaseException as e:
-            # Catch ALL exceptions including Spark Connect errors
+        except Exception as e:
+            # Catch application exceptions including Spark Connect errors
             return PlanResult.unavailable(f"JVM physical plan extraction failed: {e}")
 
     def _try_explain_string(self, df: DataFrame, mode: str = "simple") -> PlanResult:
