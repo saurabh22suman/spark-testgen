@@ -142,7 +142,7 @@ class Observer:
         try:
             df.cache()
             return df
-        except BaseException as e:
+        except Exception as e:
             logger.debug(f"Cache failed, continuing without cache: {e}")
             return df
 
