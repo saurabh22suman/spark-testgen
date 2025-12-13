@@ -106,15 +106,15 @@ class Masker:
                 )
 
             elif isinstance(data_type, (IntegerType, LongType)):
-                # Add random offset to integers
-                offset = self._random.randint(-1000, 1000)
+                # Mask integers by taking modulo to ensure no overflow
+                # Use modulo of a hash to ensure deterministic masking
                 result_df = result_df.withColumn(
                     col_name,
                     F.when(
                         F.col(col_name).isNull(),
                         F.lit(None),
                     ).otherwise(
-                        F.abs(F.col(col_name) + offset) % 10000
+                        F.abs(F.hash(F.col(col_name).cast("string"))) % 10000
                     ),
                 )
 

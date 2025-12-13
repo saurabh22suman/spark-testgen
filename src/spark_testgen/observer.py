@@ -11,6 +11,9 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
     from pyspark.sql.types import StructType
 
+from .inference.plan_extractor import PlanExtractor
+from .utils import is_serverless_environment
+
 logger = logging.getLogger(__name__)
 
 
@@ -68,6 +71,7 @@ class Observer:
         """
         self.sample_size = sample_size
         self.seed = seed
+        self._plan_extractor = PlanExtractor()
 
     def capture(
         self,
@@ -116,11 +120,37 @@ class Observer:
             physical_plan=physical_plan,
         )
 
+    def _safe_cache(self, df: DataFrame) -> DataFrame:
+        """Safely cache a DataFrame, handling serverless environments.
+
+        On serverless Spark (e.g., Databricks), cache/persist operations
+        are not supported. This method detects the environment upfront
+        and skips caching entirely to avoid deferred execution errors.
+
+        Args:
+            df: DataFrame to cache
+
+        Returns:
+            The DataFrame (cached if possible, original otherwise)
+        """
+        # Check for serverless/Connect environment BEFORE calling cache
+        # because cache() may succeed but fail later during execution
+        if is_serverless_environment(df):
+            logger.debug("Skipping cache (serverless/Connect environment detected)")
+            return df
+
+        try:
+            df.cache()
+            return df
+        except Exception as e:
+            logger.debug(f"Cache failed, continuing without cache: {e}")
+            return df
+
     def _sample_dataframe(self, df: DataFrame) -> DataFrame:
         """Sample rows from DataFrame for snapshot testing.
 
         Uses limit() for small datasets, sample() for large ones.
-        The result is cached to avoid recomputation.
+        The result is cached to avoid recomputation (if caching is available).
 
         Args:
             df: DataFrame to sample
@@ -133,13 +163,14 @@ class Observer:
         # as we're testing schema and basic transformations
         sampled = df.limit(self.sample_size)
 
-        # Cache to avoid recomputation when saving
-        sampled.cache()
-
-        return sampled
+        # Cache to avoid recomputation when saving (skip on serverless)
+        return self._safe_cache(sampled)
 
     def _extract_logical_plan(self, df: DataFrame) -> str:
         """Extract logical execution plan from DataFrame.
+
+        Uses PlanExtractor for robust cross-environment support,
+        including Spark Connect and serverless Spark.
 
         Args:
             df: DataFrame to extract plan from
@@ -147,15 +178,17 @@ class Observer:
         Returns:
             String representation of logical plan
         """
-        try:
-            # Access the internal Java DataFrame
-            return df._jdf.queryExecution().logical().toString()
-        except Exception as e:
-            logger.warning(f"Failed to extract logical plan: {e}")
-            return f"<unable to extract logical plan: {e}>"
+        result = self._plan_extractor.get_logical_plan(df)
+        if result.success:
+            return result.plan
+        logger.warning(f"Failed to extract logical plan: {result.error}")
+        return f"<unable to extract logical plan: {result.error}>"
 
     def _extract_physical_plan(self, df: DataFrame) -> str:
         """Extract physical execution plan from DataFrame.
+
+        Uses PlanExtractor for robust cross-environment support,
+        including Spark Connect and serverless Spark.
 
         Args:
             df: DataFrame to extract plan from
@@ -163,9 +196,8 @@ class Observer:
         Returns:
             String representation of physical plan
         """
-        try:
-            # Access the internal Java DataFrame
-            return df._jdf.queryExecution().executedPlan().toString()
-        except Exception as e:
-            logger.warning(f"Failed to extract physical plan: {e}")
-            return f"<unable to extract physical plan: {e}>"
+        result = self._plan_extractor.get_physical_plan(df)
+        if result.success:
+            return result.plan
+        logger.warning(f"Failed to extract physical plan: {result.error}")
+        return f"<unable to extract physical plan: {result.error}>"

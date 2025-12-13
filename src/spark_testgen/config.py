@@ -8,7 +8,6 @@ import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -109,17 +108,13 @@ def _parse_mode_env(env_var: str) -> Mode:
 def _check_git_repo() -> bool:
     """Check if current directory is inside a git repository."""
     current = Path.cwd()
-    for parent in [current, *current.parents]:
-        if (parent / ".git").exists():
-            return True
-    return False
+    return any((parent / ".git").exists() for parent in [current, *current.parents])
 
 
 def _warn_unsafe_mode() -> None:
     """Warn user about unsafe mode, especially in git repositories."""
     message = (
-        "⚠️  SPARK_TESTGEN_MODE=unsafe_raw is enabled! "
-        "Raw data will be written to test resources."
+        "⚠️  SPARK_TESTGEN_MODE=unsafe_raw is enabled! Raw data will be written to test resources."
     )
 
     if _check_git_repo():
@@ -133,7 +128,7 @@ def _warn_unsafe_mode() -> None:
 
 
 # Global configuration instance (lazy-loaded)
-_config: Optional[Config] = None
+_config: Config | None = None
 
 
 def get_config() -> Config:

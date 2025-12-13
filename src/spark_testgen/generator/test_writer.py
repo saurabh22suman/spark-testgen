@@ -28,7 +28,7 @@ class TestWriter:
     def generate(
         self,
         function_name: str,
-        input_analysis: SchemaAnalysis,
+        _input_analysis: SchemaAnalysis,
         output_analysis: SchemaAnalysis,
         schema_comparison: SchemaComparison,
         paths: TestPaths,
@@ -37,7 +37,7 @@ class TestWriter:
 
         Args:
             function_name: Name of the function being tested
-            input_analysis: Analysis of input schema
+            _input_analysis: Analysis of input schema (unused, reserved for future)
             output_analysis: Analysis of output schema
             schema_comparison: Comparison between input/output schemas
             paths: TestPaths for resource locations
@@ -92,7 +92,7 @@ class TestWriter:
 
     def _generate_imports(self) -> str:
         """Generate import statements."""
-        return dedent('''\
+        return dedent("""\
             from pathlib import Path
 
             import pytest
@@ -110,7 +110,7 @@ class TestWriter:
                 StructField,
                 StructType,
                 TimestampType,
-            )''')
+            )""")
 
     def _generate_constants(self, function_name: str, paths: TestPaths) -> str:
         """Generate constants section."""
@@ -259,10 +259,11 @@ class TestWriter:
         if schema_comparison.added_fields:
             added_list = ", ".join(f'"{f}"' for f in schema_comparison.added_fields)
             added_check = f'''
-        # Verify expected new columns are present
-        expected_added = [{added_list}]
-        for col in expected_added:
-            assert col in output_cols, f"Expected added column '{{col}}' not found"'''
+
+                    # Verify expected new columns are present
+                    expected_added = [{added_list}]
+                    for col in expected_added:
+                        assert col in output_cols, f"Expected added column '{{col}}' not found"'''
 
         return dedent(f'''\
             # =============================================================================
@@ -278,7 +279,7 @@ class TestWriter:
                 ) -> None:
                     """Verify output schema has all expected fields."""
                     # TODO: Uncomment and call your transformation
-                    # result = {schema_comparison.common_fields[0] if schema_comparison.common_fields else 'your_function'}(input_df)
+                    # result = {schema_comparison.common_fields[0] if schema_comparison.common_fields else "your_function"}(input_df)
 
                     # For now, use expected output
                     result = spark.read.parquet(str(RESOURCE_DIR / "output.parquet"))
@@ -291,7 +292,7 @@ class TestWriter:
 
                     for name, dtype, nullable in expected_fields:
                         assert name in output_cols, f"Missing field: {{name}}"
-            {added_check}
+{added_check}
 
                 def test_schema_matches_snapshot(
                     self, spark: SparkSession, expected_output_df: DataFrame, input_df: DataFrame
@@ -411,7 +412,6 @@ class TestWriter:
                 changes to query structure.
                 """
 
-                @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledCoroutineWarning")
                 def test_logical_plan_stable(
                     self,
                     spark: SparkSession,

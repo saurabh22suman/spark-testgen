@@ -2,23 +2,21 @@
 
 from __future__ import annotations
 
-import pytest
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
-    ArrayType,
     IntegerType,
     StringType,
     StructField,
     StructType,
 )
 
-from spark_testgen.inference.schema import SchemaAnalyzer, SchemaAnalysis, SchemaComparison
+from spark_testgen.inference.schema import SchemaAnalyzer
 
 
 class TestSchemaAnalyzer:
     """Tests for SchemaAnalyzer class."""
 
-    def test_analyze_simple_schema(self, spark: SparkSession, sample_df):
+    def test_analyze_simple_schema(self, _spark: SparkSession, sample_df):
         """Test analyzing a simple schema."""
         analyzer = SchemaAnalyzer()
         analysis = analyzer.analyze(sample_df.schema)
@@ -28,7 +26,7 @@ class TestSchemaAnalyzer:
         assert "name" in [f.name for f in analysis.fields]
         assert len(analysis.nullable_fields) > 0
 
-    def test_analyze_identifies_complex_types(self, spark: SparkSession, complex_schema_df):
+    def test_analyze_identifies_complex_types(self, _spark: SparkSession, complex_schema_df):
         """Test analyzer identifies complex types."""
         analyzer = SchemaAnalyzer()
         analysis = analyzer.analyze(complex_schema_df.schema)
@@ -38,7 +36,7 @@ class TestSchemaAnalyzer:
         assert "nested" in analysis.complex_types  # StructType
         assert "id" in analysis.simple_types
 
-    def test_compare_schemas_added_fields(self, spark: SparkSession, sample_df):
+    def test_compare_schemas_added_fields(self, _spark: SparkSession, sample_df):
         """Test comparing schemas with added fields."""
         analyzer = SchemaAnalyzer()
 
@@ -49,7 +47,7 @@ class TestSchemaAnalyzer:
         assert len(comparison.removed_fields) == 0
         assert "id" in comparison.common_fields
 
-    def test_compare_schemas_removed_fields(self, spark: SparkSession, sample_df):
+    def test_compare_schemas_removed_fields(self, _spark: SparkSession, sample_df):
         """Test comparing schemas with removed fields."""
         analyzer = SchemaAnalyzer()
 
@@ -59,12 +57,14 @@ class TestSchemaAnalyzer:
         assert "name" in comparison.removed_fields
         assert len(comparison.added_fields) == 0
 
-    def test_schema_to_code(self, spark: SparkSession):
+    def test_schema_to_code(self, _spark: SparkSession):
         """Test generating Python code for schema."""
-        schema = StructType([
-            StructField("id", IntegerType(), False),
-            StructField("name", StringType(), True),
-        ])
+        schema = StructType(
+            [
+                StructField("id", IntegerType(), False),
+                StructField("name", StringType(), True),
+            ]
+        )
 
         analyzer = SchemaAnalyzer()
         code = analyzer.schema_to_code(schema)

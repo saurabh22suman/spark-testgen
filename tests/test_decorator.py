@@ -23,7 +23,7 @@ class TestAutogenTestsDecorator:
         """Reset config after each test."""
         reset_config()
 
-    def test_decorator_passthrough_when_disabled(self, spark: SparkSession, sample_df):
+    def test_decorator_passthrough_when_disabled(self, _spark: SparkSession, sample_df):
         """Test decorator does nothing when SPARK_TESTGEN is not set."""
 
         @autogen_tests
@@ -47,7 +47,7 @@ class TestAutogenTestsDecorator:
         assert my_transform.__name__ == "my_transform"
         assert "This is my transform" in my_transform.__doc__
 
-    def test_decorator_raises_on_no_arguments(self, spark: SparkSession):
+    def test_decorator_raises_on_no_arguments(self, _spark: SparkSession):
         """Test decorator raises error when no DataFrame is provided."""
 
         @autogen_tests
@@ -58,7 +58,7 @@ class TestAutogenTestsDecorator:
             transform()
 
     @mock.patch.dict(os.environ, {SPARK_TESTGEN_ENV: "1"})
-    def test_decorator_enabled_executes_function(self, spark: SparkSession, sample_df, tmp_path):
+    def test_decorator_enabled_executes_function(self, _spark: SparkSession, sample_df, tmp_path):
         """Test decorator still executes the function when enabled."""
         # Patch output directory to use temp path
         with mock.patch("spark_testgen.config.Config.from_environment") as mock_config:

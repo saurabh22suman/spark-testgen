@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from pyspark.sql import SparkSession
 
 from spark_testgen.observer import Observation, Observer
@@ -11,7 +10,7 @@ from spark_testgen.observer import Observation, Observer
 class TestObservation:
     """Tests for Observation dataclass."""
 
-    def test_observation_creation(self, spark: SparkSession, sample_df):
+    def test_observation_creation(self, _spark: SparkSession, sample_df):
         """Test creating an observation."""
         output_df = sample_df.withColumn("doubled", sample_df.value * 2)
 
@@ -46,7 +45,7 @@ class TestObserver:
         assert observer.sample_size == 10
         assert observer.seed == 123
 
-    def test_capture_basic(self, spark: SparkSession, sample_df):
+    def test_capture_basic(self, _spark: SparkSession, sample_df):
         """Test capturing a basic transformation."""
         output_df = sample_df.withColumn("doubled", sample_df.value * 2)
 
@@ -59,7 +58,7 @@ class TestObserver:
         assert observation.input_sample.count() <= 10
         assert observation.output_sample.count() <= 10
 
-    def test_capture_extracts_plans(self, spark: SparkSession, sample_df):
+    def test_capture_extracts_plans(self, _spark: SparkSession, sample_df):
         """Test that plans are extracted."""
         output_df = sample_df.filter(sample_df.value > 100)
 

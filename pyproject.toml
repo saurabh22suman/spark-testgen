@@ -55,11 +55,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/spark-testgen"
-Documentation = "https://github.com/yourusername/spark-testgen#readme"
-Repository = "https://github.com/yourusername/spark-testgen.git"
-Issues = "https://github.com/yourusername/spark-testgen/issues"
-Changelog = "https://github.com/yourusername/spark-testgen/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/saurabh22suman/spark-testgen"
+Documentation = "https://github.com/saurabh22suman/spark-testgen#readme"
+Repository = "https://github.com/saurabh22suman/spark-testgen.git"
+Issues = "https://github.com/saurabh22suman/spark-testgen/issues"
+Changelog = "https://github.com/saurabh22suman/spark-testgen/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -78,6 +78,7 @@ local_scheme = "no-local-version"
 target-version = "py39"
 line-length = 100
 src = ["src", "tests"]
+exclude = ["src/spark_testgen/_version.py"]
 
 [tool.ruff.lint]
 select = [

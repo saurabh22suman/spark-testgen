@@ -8,10 +8,10 @@ from unittest import mock
 import pytest
 
 from spark_testgen.config import (
-    Config,
-    Mode,
     SPARK_TESTGEN_ENV,
     SPARK_TESTGEN_MODE_ENV,
+    Config,
+    Mode,
     get_config,
     reset_config,
 )

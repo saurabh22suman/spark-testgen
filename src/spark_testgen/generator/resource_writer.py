@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from pyspark.sql import DataFrame
     from pyspark.sql.types import StructType
 
+from ..utils import is_serverless_environment
 from .paths import TestPaths
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,11 @@ class ResourceWriter:
     def _write_dataframe(self, df: DataFrame, path: Path) -> None:
         """Write DataFrame to parquet.
 
+        Supports multiple execution environments:
+        - Classic PySpark with local filesystem access
+        - Spark Connect (uses pandas fallback)
+        - Serverless Spark (uses pandas fallback)
+
         Args:
             df: DataFrame to write
             path: Target path
@@ -91,12 +97,57 @@ class ResourceWriter:
 
             shutil.rmtree(path_str)
 
-        # Coalesce to single file for simplicity
-        df.coalesce(1).write.mode("overwrite" if self.overwrite else "error").parquet(
-            path_str
-        )
+        # Check for serverless/Connect environment BEFORE trying Spark write
+        # This avoids deferred execution errors where the write appears to
+        # succeed but fails later during query execution
+        if is_serverless_environment(df):
+            logger.debug("Serverless environment detected, using pandas for write")
+            self._write_dataframe_via_pandas(df, path)
+            return
 
-        logger.debug(f"Wrote DataFrame to {path_str}")
+        # Try native Spark write for classic PySpark
+        try:
+            # Coalesce to single file for simplicity
+            df.coalesce(1).write.mode("overwrite" if self.overwrite else "error").parquet(path_str)
+            logger.debug(f"Wrote DataFrame to {path_str} (native Spark)")
+            return
+        except Exception as e:
+            logger.debug(f"Native Spark write failed, falling back to pandas: {e}")
+
+        # Fallback: Use pandas
+        self._write_dataframe_via_pandas(df, path)
+
+    def _write_dataframe_via_pandas(self, df: DataFrame, path: Path) -> None:
+        """Write DataFrame to parquet using pandas as a fallback.
+
+        This is used when native Spark write is not available (e.g., serverless).
+        Note: This collects data to the driver, so it's only suitable for
+        test data which should be small.
+
+        Args:
+            df: DataFrame to write
+            path: Target path
+        """
+        try:
+            # Collect to pandas
+            pdf = df.toPandas()
+
+            # Ensure directory exists
+            path.mkdir(parents=True, exist_ok=True)
+
+            # Write as parquet
+            parquet_file = path / "part-00000.parquet"
+            pdf.to_parquet(parquet_file, index=False, engine="pyarrow")
+
+            logger.debug(f"Wrote DataFrame to {path} (via pandas)")
+        except ImportError as e:
+            raise RuntimeError(
+                "pandas or pyarrow is required for writing DataFrames in "
+                "serverless/Connect environments. Install with: "
+                "pip install pandas pyarrow"
+            ) from e
+        except Exception as e:
+            raise RuntimeError(f"Failed to write DataFrame via pandas fallback: {e}") from e
 
     def _write_text(self, content: str, path: Path) -> None:
         """Write text content to file.
