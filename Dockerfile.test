@@ -1,0 +1,35 @@
+# Dockerfile for testing spark-testgen locally without Java installed
+FROM python:3.10-slim
+
+# Install Java (required for PySpark)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openjdk-21-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set JAVA_HOME
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+
+WORKDIR /app
+
+# Copy project files
+COPY pyproject.toml ./
+COPY src/ ./src/
+
+# Install git (required for setuptools-scm) and upgrade pip
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --upgrade pip setuptools wheel
+
+# Initialize a git repo for setuptools-scm (for version detection)
+RUN git init && git config user.email "test@test.com" && git config user.name "Test" \
+    && git add -A && git commit -m "init" && git tag v0.1.0
+
+# Install the package with dev dependencies
+RUN pip install --no-cache-dir -e ".[dev]"
+
+# Copy tests
+COPY tests/ ./tests/
+
+# Default command: run the test generation script
+CMD ["python", "-c", "print('spark-testgen test container ready')"]

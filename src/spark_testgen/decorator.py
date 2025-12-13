@@ -166,7 +166,7 @@ def _run_pipeline(observation: Observation, config: Config) -> None:
     test_writer = TestWriter()
     test_content = test_writer.generate(
         function_name=observation.function_name,
-        input_analysis=input_analysis,
+        _input_analysis=input_analysis,
         output_analysis=output_analysis,
         schema_comparison=schema_comparison,
         paths=paths,

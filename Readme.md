@@ -122,7 +122,7 @@ pytest tests/test_transform.py -v
 |---------------------|--------|---------|-------------|
 | `SPARK_TESTGEN` | `1`, `true` | Not set | Enable test generation (safety switch) |
 | `SPARK_TESTGEN_MODE` | `masked`, `synthetic`, `unsafe_raw` | `masked` | Data handling mode |
-| `SPARK_TESTGEN_OUTPUT` | Path | `tests/` | Output directory |
+| `SPARK_TESTGEN_OUTPUT_DIR` | Path | `tests/` | Output directory |
 | `SPARK_TESTGEN_SAMPLE_SIZE` | Integer | `20` | Rows to sample |
 
 ### Why `SPARK_TESTGEN` is Required
@@ -140,7 +140,7 @@ This design ensures:
 ```bash
 SPARK_TESTGEN=1 \
 SPARK_TESTGEN_MODE=synthetic \
-SPARK_TESTGEN_OUTPUT=my_tests/ \
+SPARK_TESTGEN_OUTPUT_DIR=my_tests/ \
 python main.py
 ```
 
